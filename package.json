@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "puppeteer": "^24.40.0"
+  },
+  "dependencies": {
+    "imagesnap": "^0.0.0",
+    "screenshot-desktop": "^1.15.3"
+  }
+}
