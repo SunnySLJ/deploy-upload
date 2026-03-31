@@ -1,0 +1,17 @@
+.DS_Store
+**/.DS_Store
+
+.openclaw/workspace-state.json
+
+node_modules/
+CLIProxyAPI/
+
+images/
+inbound_images/
+inbound_videos/
+temp_video.mp4
+
+published/
+**/published/
+
+memory/heartbeat-state.json
