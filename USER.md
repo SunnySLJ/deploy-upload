@@ -1,17 +1,36 @@
-# USER.md - About Your Human
+# USER.md - 关于千千
 
-_Learn about the person you're helping. Update this as you go._
+## 基本信息
 
-- **Name:**
-- **What to call them:** 千千
-- **Pronouns:** _(optional)_
-- **Timezone:** Asia/Shanghai
-- **Notes:** 喜欢可爱风格
+- **称呼**: 千千
+- **时区**: Asia/Shanghai
 
-## Context
+## 视频创作偏好
 
-_(What do they care about? What projects are they working on? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)_
+- **视频风格**: 可爱风
+- **默认标题**: 可爱日常
+- **默认标签**: #可爱 #日常 #生活记录
+- **文案风格**: 带表情符号，元气满满
+
+## 常用平台
+
+| 平台 | 使用频率 |
+|------|----------|
+| 抖音 | 高 |
+| 小红书 | 高 |
+| 快手 | 中 |
+| 视频号 | 中 |
+
+## 通知偏好
+
+- **登录二维码**: 通过微信发送
+- **视频生成完成**: 微信通知 + 发送视频文件
+- **发布结果**: 汇总通知（哪些成功、哪些需重新登录）
+
+## 重要习惯
+
+- **桌面整洁**: 发送登录截图后，用户回复"扫完了"时应自动删除截图文件
 
 ---
 
-The more you know, the better you can help. But remember — you're learning about a person, not building a dossier. Respect the difference.
+_最后更新：2026-03-31_

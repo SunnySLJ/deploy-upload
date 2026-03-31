@@ -1,7 +1,41 @@
-# HEARTBEAT.md Template
+# HEARTBEAT.md - 定时任务配置
 
-```markdown
-# Keep this file empty (or with only comments) to skip heartbeat API calls.
+## 每日定时任务
 
-# Add tasks below when you want the agent to check something periodically.
+### 登录状态检查
+
+- **时间**: 每天 10:10（可配置）
+- **配置文件**: `xiaolong-upload/skills/auth/login_check_config.json`
+- **任务**: 检查四个平台登录状态（抖音 → 小红书 → 快手 → 视频号）
+- **执行**: 若登录失效，自动尝试恢复会话；如失败则发送微信通知
+- **Cron ID**: `6482a7da-40c2-45d5-b74d-e8858845f8c0`
+
+### 视频输出目录清理
+
+- **时间**: 每周二凌晨 01:00
+- **任务**: 清理 `flash_longxia/output/` 目录
+- **规则**: 保留最近 7 天的视频文件
+
+## 心跳检查项（每次心跳轮询 2-4 项）
+
+- [ ] 检查平台登录状态（轮换检查）
+- [ ] 检查是否有待处理的视频生成任务
+- [ ] 检查通知队列
+
+## 心跳状态追踪
+
+记录在 `memory/heartbeat-state.json`：
+
+```json
+{
+  "lastChecks": {
+    "login_status": null,
+    "video_tasks": null
+  },
+  "lastOutreach": null
+}
 ```
+
+---
+
+_最后更新：2026-03-31_
