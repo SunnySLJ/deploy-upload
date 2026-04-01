@@ -1,19 +1,12 @@
 {
   "lastChecks": {
-    "login_status": "2026-03-31T10:10:00+08:00",
-    "video_tasks": "2026-03-31T16:29:00+08:00",
-    "notification_queue": "2026-03-31T16:29:00+08:00"
+    "login_status": "2026-04-01T06:17:43.610747",
+    "video_tasks": "2026-04-01T11:30:00.000000",
+    "notification_queue": "2026-04-01T11:30:00.000000",
+    "video_notifications": "2026-04-01T11:30:00.000000"
   },
-  "lastOutreach": "2026-03-31T16:29:00+08:00",
-  "lastHeartbeat": "2026-03-31T16:29:00+08:00",
-  "notes": "任务 1748 已完成并下载视频，等待用户确认发布",
-  "pendingTasks": [
-    {
-      "taskId": 1748,
-      "status": "completed",
-      "videoPath": "/Users/mima0000/.openclaw/workspace/openclaw_upload/output/1748.mp4",
-      "submittedAt": "2026-03-31T16:05:00+08:00",
-      "completedAt": "2026-03-31T16:29:00+08:00"
-    }
-  ]
+  "lastOutreach": "2026-04-01T14:31:00+08:00",
+  "lastHeartbeat": "2026-04-01T14:31:00.000000",
+  "notes": "WeChat 连接已恢复 (新账号 2ee9...261f)。任务 1887、1889 已发布到视频号。任务 1884、1886 已放弃（超时失败）。",
+  "pendingTasks": []
 }
