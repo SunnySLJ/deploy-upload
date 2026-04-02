@@ -288,17 +288,49 @@ function Step7-ConfigureLLM {
         }
     }
 
-    $script:ApiKey = Read-Host "  百炼 API Key (sk-sp-xxx)"
-    if ([string]::IsNullOrEmpty($ApiKey)) { $script:ApiKey = "{{YOUR_API_KEY}}" }
+    Write-Host ""
+    Write-Host "  --- 选择 LLM 服务商 ---" -ForegroundColor White
+    Write-Host "  1) 百炼 Coding Plan - 通义千问系列 (qwen3-coder-plus 等)"
+    Write-Host "     API: https://coding.dashscope.aliyuncs.com"
+    Write-Host ""
+    Write-Host "  2) n1n.ai - GPT-4.1 + Claude Opus 4.1"
+    Write-Host "     API: https://api.n1n.ai"
+    Write-Host "     文档: https://docs.n1n.ai/"
+    Write-Host ""
+    $llmChoice = Read-Host "  请选择 (1/2, 默认 2)"
+    if ([string]::IsNullOrEmpty($llmChoice)) { $llmChoice = "2" }
 
-    $tplPath = Join-Path $DeployDir "config\openclaw.json.template"
-    if (Test-Path $tplPath) {
-        $content = Get-Content $tplPath -Raw -Encoding UTF8
+    $templateFile = ""
+    $providerName = ""
+
+    switch ($llmChoice) {
+        "1" {
+            $templateFile = Join-Path $DeployDir "config\openclaw-bailian.json.template"
+            $providerName = "百炼 Coding Plan"
+            Info "请输入百炼 (DashScope) API Key:"
+            $script:ApiKey = Read-Host "  API Key (sk-sp-xxx)"
+        }
+        default {
+            $templateFile = Join-Path $DeployDir "config\openclaw-n1n.json.template"
+            $providerName = "n1n.ai (GPT-4.1)"
+            Info "请输入 n1n.ai API Key:"
+            $script:ApiKey = Read-Host "  API Key (sk-xxx)"
+        }
+    }
+
+    if ([string]::IsNullOrEmpty($ApiKey)) {
+        Warn "未输入 API Key，使用占位符（部署后需手动填写）"
+        $script:ApiKey = "{{YOUR_API_KEY}}"
+    }
+
+    if (Test-Path $templateFile) {
+        $content = Get-Content $templateFile -Raw -Encoding UTF8
         $content = $content.Replace("{{API_KEY}}", $ApiKey)
         [System.IO.File]::WriteAllText($configPath, $content, [System.Text.Encoding]::UTF8)
-        OK "openclaw.json 已生成"
+        OK ("openclaw.json 已生成 - {0}" -f $providerName)
+        Info ("memory-lancedb-pro 和 lossless-claw 也已配置为 {0}" -f $providerName)
     } else {
-        Warn "模板文件不存在，请手动配置"
+        Warn ("模板文件不存在: {0}" -f $templateFile)
     }
 }
 

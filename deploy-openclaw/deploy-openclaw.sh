@@ -307,22 +307,58 @@ step7_configure_llm() {
     fi
 
     echo ""
-    info "请输入百炼 (DashScope) API Key:"
-    read -rp "  API Key (sk-sp-xxx): " API_KEY
+    echo -e "${BOLD}🧠 选择 LLM 服务商：${NC}"
+    echo "  1) 百炼 Coding Plan — 通义千问系列模型 (qwen3-coder-plus 等)"
+    echo "     API: https://coding.dashscope.aliyuncs.com"
+    echo ""
+    echo "  2) n1n.ai — GPT-4.1 + Claude Opus 4.1"
+    echo "     API: https://api.n1n.ai"
+    echo "     文档: https://docs.n1n.ai/"
+    echo ""
+    local llm_choice
+    read -rp "  请选择 (1/2, 默认 2): " llm_choice
+    llm_choice="${llm_choice:-2}"
+
+    echo ""
+    local template_file=""
+    local provider_name=""
+
+    case "$llm_choice" in
+        1)
+            template_file="$DEPLOY_DIR/config/openclaw-bailian.json.template"
+            provider_name="百炼 Coding Plan"
+            info "请输入百炼 (DashScope) API Key:"
+            read -rp "  API Key (sk-sp-xxx): " API_KEY
+            ;;
+        2)
+            template_file="$DEPLOY_DIR/config/openclaw-n1n.json.template"
+            provider_name="n1n.ai (GPT-4.1)"
+            info "请输入 n1n.ai API Key:"
+            read -rp "  API Key (sk-xxx): " API_KEY
+            ;;
+        *)
+            warn "无效选择，使用默认 n1n.ai"
+            template_file="$DEPLOY_DIR/config/openclaw-n1n.json.template"
+            provider_name="n1n.ai (GPT-4.1)"
+            info "请输入 n1n.ai API Key:"
+            read -rp "  API Key (sk-xxx): " API_KEY
+            ;;
+    esac
 
     if [ -z "$API_KEY" ]; then
-        warn "未输入 API Key，使用模板中的占位符"
+        warn "未输入 API Key，使用占位符（部署后需手动填写）"
         API_KEY="{{YOUR_API_KEY}}"
     fi
 
-    # 从模板生成 openclaw.json（不含 memory-lancedb-pro 和 lossless-claw 插件源码）
-    if [ -f "$DEPLOY_DIR/config/openclaw.json.template" ]; then
+    if [ -f "$template_file" ]; then
         sed "s|{{API_KEY}}|$API_KEY|g" \
-            "$DEPLOY_DIR/config/openclaw.json.template" \
+            "$template_file" \
             > "$OPENCLAW_DIR/openclaw.json"
-        ok "openclaw.json 已生成 (不含 plugin 源码包)"
+        ok "openclaw.json 已生成 — $provider_name"
+        info "memory-lancedb-pro 和 lossless-claw 也已配置为 $provider_name"
     else
-        warn "模板文件不存在，请手动配置 openclaw.json"
+        warn "模板文件不存在: $template_file"
+        warn "请手动配置 openclaw.json"
     fi
 }
 
