@@ -131,6 +131,7 @@
       "openclaw-weixin",
       "lossless-claw"
     ],
+    "_comment": "插件源码不随部署包分发，OpenClaw 启动时自动下载安装",
     "slots": {
       "memory": "memory-lancedb-pro",
       "contextEngine": "lossless-claw"

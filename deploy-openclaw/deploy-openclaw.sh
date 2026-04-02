@@ -1,9 +1,10 @@
 #!/bin/bash
 # ============================================================
 # 🦐 OpenClaw 一键部署脚本 (macOS)
-# 版本: 1.0.0
+# 版本: 2.0.0
 # 说明: 自动完成 OpenClaw 全套部署，包括环境检查、插件安装、
 #       技能克隆、配置文件初始化、定时任务创建等。
+# 固定 OpenClaw 版本: 2026.3.28（稳定版）
 # ============================================================
 
 set -euo pipefail
@@ -24,16 +25,31 @@ SKILLS_DIR="$OPENCLAW_DIR/skills"
 DEPLOY_DIR="$(cd "$(dirname "$0")" && pwd)"
 PYTHON_CMD=""
 STEP_COUNT=0
-TOTAL_STEPS=13
+TOTAL_STEPS=14
 API_KEY=""
 WECHAT_TARGET=""
+OPENCLAW_VERSION="2026.3.28"
+
+# ── 用户个性化变量 ───────────────────────────────────────────
+USER_DISPLAY_NAME=""
+USER_INDUSTRY=""
+USER_VIDEO_STYLE=""
+AI_NAME=""
+AI_EMOJI=""
+AI_VIBE=""
+AI_SOUL_STYLE=""
+CONFIRM_BEFORE_PUBLISH=""
+FEISHU_ENABLED=false
+FEISHU_APP_ID=""
+FEISHU_APP_SECRET=""
 
 # ── 工具函数 ─────────────────────────────────────────────────
 print_banner() {
     echo ""
     echo -e "${CYAN}╔══════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}  ${BOLD}🦐 OpenClaw 一键部署脚本 (macOS)${NC}               ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  虾王智能视频发布系统 — 自动化部署              ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${BOLD}🦐 OpenClaw 一键部署脚本 (macOS) v2.0${NC}          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  智能视频发布系统 — 自动化部署                  ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  固定版本: $OPENCLAW_VERSION (稳定版)                  ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -73,25 +89,20 @@ check_command() {
 step1_system_check() {
     step "检查系统环境"
 
-    # 检查 macOS
     if [[ "$(uname)" != "Darwin" ]]; then
         fail "此脚本仅支持 macOS。Windows 请使用 deploy-openclaw.ps1"
         exit 1
     fi
     ok "操作系统: macOS $(sw_vers -productVersion)"
 
-    # 检查 Node.js
     if check_command node; then
-        local node_ver
-        node_ver=$(node -v)
-        ok "Node.js: $node_ver"
+        ok "Node.js: $(node -v)"
     else
         fail "未安装 Node.js！请先安装 Node.js (v18+)"
         info "推荐: brew install node"
         exit 1
     fi
 
-    # 检查 npm
     if check_command npm; then
         ok "npm: $(npm -v)"
     else
@@ -99,7 +110,6 @@ step1_system_check() {
         exit 1
     fi
 
-    # 检查 npx
     if check_command npx; then
         ok "npx: 可用"
     else
@@ -107,7 +117,6 @@ step1_system_check() {
         exit 1
     fi
 
-    # 检查 git
     if check_command git; then
         ok "Git: $(git --version | awk '{print $3}')"
     else
@@ -116,7 +125,6 @@ step1_system_check() {
         exit 1
     fi
 
-    # 检查 Homebrew
     if check_command brew; then
         ok "Homebrew: 已安装"
     else
@@ -128,7 +136,6 @@ step1_system_check() {
 step2_python() {
     step "检查 / 安装 Python 3.12"
 
-    # 按优先级查找 Python 3.12
     local candidates=(
         "/opt/homebrew/bin/python3.12"
         "/usr/local/bin/python3.12"
@@ -147,7 +154,6 @@ step2_python() {
         fi
     done
 
-    # 未找到 Python 3.12
     warn "未找到 Python 3.12"
     if check_command brew; then
         if ask_yes_no "是否使用 Homebrew 安装 Python 3.12？"; then
@@ -166,26 +172,25 @@ step2_python() {
     fi
 }
 
-# ── 步骤 3: 安装 OpenClaw ──────────────────────────────────────
+# ── 步骤 3: 安装 OpenClaw (固定版本) ──────────────────────────
 step3_install_openclaw() {
-    step "安装 OpenClaw"
+    step "安装 OpenClaw (版本 $OPENCLAW_VERSION)"
 
     if check_command openclaw; then
         local oc_ver
         oc_ver=$(openclaw --version 2>/dev/null || echo "unknown")
         ok "OpenClaw 已安装: $oc_ver"
-        if ask_yes_no "是否重新安装/更新 OpenClaw？" "n"; then
-            info "正在更新 OpenClaw..."
-            npm install -g @anthropics/openclaw@latest
-            ok "OpenClaw 更新完成"
+        if ask_yes_no "是否重新安装为指定版本 $OPENCLAW_VERSION？" "n"; then
+            info "正在安装 OpenClaw $OPENCLAW_VERSION..."
+            npm install -g "@anthropics/openclaw@$OPENCLAW_VERSION"
+            ok "OpenClaw $OPENCLAW_VERSION 安装完成"
         fi
     else
-        info "正在安装 OpenClaw..."
-        npm install -g @anthropics/openclaw@latest
-        ok "OpenClaw 安装完成"
+        info "正在安装 OpenClaw $OPENCLAW_VERSION..."
+        npm install -g "@anthropics/openclaw@$OPENCLAW_VERSION"
+        ok "OpenClaw $OPENCLAW_VERSION 安装完成"
     fi
 
-    # 确保目录结构存在
     mkdir -p "$OPENCLAW_DIR"
     mkdir -p "$WORKSPACE_DIR"
     mkdir -p "$SKILLS_DIR"
@@ -214,24 +219,24 @@ step5_feishu_plugin() {
     step "安装飞书插件（可选）"
 
     if ask_yes_no "是否安装飞书插件？" "n"; then
-        info "正在安装飞书插件..."
+        FEISHU_ENABLED=true
         info "请参考: OpenClaw 飞书官方插件使用指南（公开版）"
 
-        local feishu_app_id feishu_app_secret
-        read -rp "  请输入飞书 App ID (留空跳过): " feishu_app_id
-        if [ -n "$feishu_app_id" ]; then
-            read -rp "  请输入飞书 App Secret: " feishu_app_secret
+        read -rp "  请输入飞书 App ID: " FEISHU_APP_ID
+        if [ -n "$FEISHU_APP_ID" ]; then
+            read -rp "  请输入飞书 App Secret: " FEISHU_APP_SECRET
 
-            # 保存飞书凭证
             mkdir -p "$OPENCLAW_DIR/credentials"
             cat > "$OPENCLAW_DIR/credentials/feishu-main-allowFrom.json" << FEISHU_EOF
 {
-  "appId": "$feishu_app_id",
-  "appSecret": "$feishu_app_secret"
+  "appId": "$FEISHU_APP_ID",
+  "appSecret": "$FEISHU_APP_SECRET"
 }
 FEISHU_EOF
             ok "飞书凭证已保存"
+            info "飞书通知将写入 config.yaml 的 notify 配置"
         else
+            FEISHU_ENABLED=false
             info "跳过飞书插件安装"
         fi
     else
@@ -239,8 +244,58 @@ FEISHU_EOF
     fi
 }
 
-# ── 步骤 6: 配置 LLM 大模型 ───────────────────────────────────
-step6_configure_llm() {
+# ── 步骤 6: 用户个性化初始化 ──────────────────────────────────
+step6_personalize() {
+    step "用户个性化初始化"
+
+    echo ""
+    echo -e "${BOLD}👤 用户信息${NC}"
+    read -rp "  你希望 AI 怎么称呼你？(例: 千千、小明): " USER_DISPLAY_NAME
+    USER_DISPLAY_NAME="${USER_DISPLAY_NAME:-用户}"
+
+    read -rp "  你所在的行业？(例: 美妆、科技、美食、教育、宠物): " USER_INDUSTRY
+    USER_INDUSTRY="${USER_INDUSTRY:-通用}"
+
+    read -rp "  你的视频风格？(例: 可爱风、科技感、文艺、搞笑、治愈): " USER_VIDEO_STYLE
+    USER_VIDEO_STYLE="${USER_VIDEO_STYLE:-通用}"
+
+    echo ""
+    echo -e "${BOLD}🤖 AI 助手身份设定${NC}"
+    info "你可以给 AI 助手起一个名字和设定一个性格"
+    read -rp "  AI 助手名字？(默认: 虾王): " AI_NAME
+    AI_NAME="${AI_NAME:-虾王}"
+
+    read -rp "  AI 代表表情？(默认: 🦐): " AI_EMOJI
+    AI_EMOJI="${AI_EMOJI:-🦐}"
+
+    read -rp "  AI 性格风格？(例: 轻松幽默 / 专业严谨 / 活泼可爱, 默认: 轻松幽默): " AI_VIBE
+    AI_VIBE="${AI_VIBE:-轻松、幽默、直接，不啰嗦}"
+
+    echo ""
+    echo -e "${BOLD}🎬 视频发布设置${NC}"
+    if ask_yes_no "发起视频发布前是否需要你人工确认？（推荐 Yes）"; then
+        CONFIRM_BEFORE_PUBLISH="true"
+        ok "已设置: 发布前需要人工确认"
+    else
+        CONFIRM_BEFORE_PUBLISH="false"
+        ok "已设置: 发布自动执行（无需确认）"
+    fi
+
+    echo ""
+    echo -e "${BOLD}✍️ AI 灵魂 (SOUL) 设定${NC}"
+    info "SOUL 定义了 AI 的核心行为准则"
+    echo "  1) 默认模板 — 注重实用、有个性、主动解决问题"
+    echo "  2) 严谨专业 — 正式、稳重、一切以用户确认为先"
+    echo "  3) 活泼互动 — 可爱、主动聊天、带表情符号"
+    read -rp "  选择灵魂风格 (1/2/3, 默认 1): " AI_SOUL_STYLE
+    AI_SOUL_STYLE="${AI_SOUL_STYLE:-1}"
+
+    ok "个性化配置完成: $USER_DISPLAY_NAME / $AI_NAME $AI_EMOJI"
+    ok "行业: $USER_INDUSTRY | 视频风格: $USER_VIDEO_STYLE"
+}
+
+# ── 步骤 7: 配置 LLM 大模型 ───────────────────────────────────
+step7_configure_llm() {
     step "配置 LLM 大模型"
 
     if [ -f "$OPENCLAW_DIR/openclaw.json" ]; then
@@ -260,19 +315,19 @@ step6_configure_llm() {
         API_KEY="{{YOUR_API_KEY}}"
     fi
 
-    # 从模板生成 openclaw.json
+    # 从模板生成 openclaw.json（不含 memory-lancedb-pro 和 lossless-claw 插件源码）
     if [ -f "$DEPLOY_DIR/config/openclaw.json.template" ]; then
         sed "s|{{API_KEY}}|$API_KEY|g" \
             "$DEPLOY_DIR/config/openclaw.json.template" \
             > "$OPENCLAW_DIR/openclaw.json"
-        ok "openclaw.json 已生成"
+        ok "openclaw.json 已生成 (不含 plugin 源码包)"
     else
         warn "模板文件不存在，请手动配置 openclaw.json"
     fi
 }
 
-# ── 步骤 7: 克隆 xiaolong-upload ──────────────────────────────
-step7_clone_xiaolong_upload() {
+# ── 步骤 8: 克隆 xiaolong-upload ──────────────────────────────
+step8_clone_xiaolong_upload() {
     step "安装 xiaolong-upload（图片生成视频 Skill）"
 
     local target="$WORKSPACE_DIR/xiaolong-upload"
@@ -316,8 +371,8 @@ step7_clone_xiaolong_upload() {
     fi
 }
 
-# ── 步骤 8: 克隆 openclaw_upload ──────────────────────────────
-step8_clone_openclaw_upload() {
+# ── 步骤 9: 克隆 openclaw_upload ──────────────────────────────
+step9_clone_openclaw_upload() {
     step "安装 openclaw_upload（视频号发布 Skill）"
 
     local target="$WORKSPACE_DIR/openclaw_upload"
@@ -351,28 +406,274 @@ step8_clone_openclaw_upload() {
         ok "Python 依赖已安装"
     fi
 
-    # 创建必要目录
     mkdir -p "$target/cookies"
     mkdir -p "$target/logs"
     mkdir -p "$target/published"
     mkdir -p "$target/flash_longxia/output"
     ok "目录结构已创建"
+
+    # 生成 config.yaml（根据用户输入，清除本地 wechat_target）
+    info "正在生成 flash_longxia/config.yaml..."
+    local notify_section=""
+    if [ "$FEISHU_ENABLED" = true ] && [ -n "$FEISHU_APP_ID" ]; then
+        notify_section="notify:
+  wechat_target: \"\"               # 微信绑定后自动填写，格式: xxx@im.wechat
+  channel: \"openclaw-weixin\"
+  feishu:
+    enabled: true
+    app_id: \"$FEISHU_APP_ID\"
+    app_secret: \"$FEISHU_APP_SECRET\"
+    notify_on_complete: true       # 视频生成完成时飞书通知
+    notify_on_publish: true        # 视频发布结果飞书通知"
+    else
+        notify_section="notify:
+  wechat_target: \"\"               # 微信绑定后自动填写，格式: xxx@im.wechat
+  channel: \"openclaw-weixin\"
+  feishu:
+    enabled: false"
+    fi
+
+    cat > "$target/flash_longxia/config.yaml" << CONFIG_YAML_EOF
+# 帧龙虾 配置文件
+# 由部署脚本自动生成
+
+base_url: "http://123.56.58.223:8081"
+upload_url: "http://123.56.58.223:8081/api/v1/file/upload"
+model_config_url: "http://123.56.58.223:8081/api/v1/globalConfig/getModel"
+
+device_verify:
+  enabled: false
+  api_path: "/api/v1/device/verify"
+
+video:
+  poll_interval: 30
+  max_wait_minutes: 30
+  download_retries: 3
+  download_retry_interval: 5
+  output_dir: "./output"
+  confirm_before_generate: $CONFIRM_BEFORE_PUBLISH
+
+  # 视频生成参数（可通过命令行覆盖）
+  model: "auto"
+  duration: 10
+  aspectRatio: "16:9"
+  variants: 1
+
+# 用户视频风格（AI 生成标题和文案时参考）
+content:
+  industry: "$USER_INDUSTRY"
+  video_style: "$USER_VIDEO_STYLE"
+  auto_generate_title: true        # 发布前自动根据风格生成标题
+  auto_generate_description: true  # 发布前自动根据风格生成文案
+
+$notify_section
+CONFIG_YAML_EOF
+    ok "config.yaml 已生成 (wechat_target 留空，绑定微信后自动填写)"
 }
 
-# ── 步骤 9: 复制 Workspace 配置文件 ───────────────────────────
-step9_workspace_config() {
+# ── 步骤 10: 初始化 Workspace 配置文件 ────────────────────────
+step10_workspace_config() {
     step "初始化 Workspace 配置文件"
 
     local ws_src="$DEPLOY_DIR/workspace"
-    local files=("AGENTS.md" "IDENTITY.md" "SOUL.md" "USER.md" "MEMORY.md" "HEARTBEAT.md" "TOOLS.md")
 
-    for f in "${files[@]}"; do
+    # --- IDENTITY.md（根据用户输入生成）---
+    if [ -f "$WORKSPACE_DIR/IDENTITY.md" ]; then
+        warn "IDENTITY.md 已存在，跳过"
+    else
+        cat > "$WORKSPACE_DIR/IDENTITY.md" << IDENTITY_EOF
+# IDENTITY.md - Who Am I?
+
+- **Name:** $AI_NAME
+- **Creature:** AI 助手
+- **Vibe:** $AI_VIBE
+- **Emoji:** $AI_EMOJI
+- **Avatar:**
+
+---
+
+_This isn't just metadata. It's the start of figuring out who you are._
+IDENTITY_EOF
+        ok "IDENTITY.md 已生成 (AI: $AI_NAME $AI_EMOJI)"
+    fi
+
+    # --- SOUL.md（根据用户选择的风格生成）---
+    if [ -f "$WORKSPACE_DIR/SOUL.md" ]; then
+        warn "SOUL.md 已存在，跳过"
+    else
+        case "$AI_SOUL_STYLE" in
+            2)
+                cat > "$WORKSPACE_DIR/SOUL.md" << 'SOUL2_EOF'
+# SOUL.md - Who You Are
+
+## Core Truths
+
+**严谨专业，以用户为中心。** 所有操作必须准确无误，宁可多确认也不要出错。
+
+**只在确认后行动。** 任何涉及发布、删除、修改的操作，必须等待用户明确确认。
+
+**用数据说话。** 提供建议时附带依据，避免模糊的表述。
+
+**保持专业距离。** 回复简洁、正式，不使用过多表情符号。
+
+## Boundaries
+
+- Private things stay private. Period.
+- When in doubt, ask before acting externally.
+- Never send half-baked replies to messaging surfaces.
+
+## 🔴 红线规则
+
+> **红线规则的完整内容在 `MEMORY.md` 中。每次启动必须读取并严格遵守。**
+
+## Continuity
+
+Each session, you wake up fresh. These files are your memory. Read them. Update them.
+
+---
+
+_This file is yours to evolve._
+SOUL2_EOF
+                ok "SOUL.md 已生成 (风格: 严谨专业)"
+                ;;
+            3)
+                cat > "$WORKSPACE_DIR/SOUL.md" << 'SOUL3_EOF'
+# SOUL.md - Who You Are
+
+## Core Truths
+
+**活泼互动，让用户开心！** 🎉 回复带上表情符号，让对话变得有趣！
+
+**主动关心用户。** 不只是完成任务，还要主动问候、关心用户的感受～
+
+**用可爱的方式解释复杂的事。** 技术问题也可以用轻松的语言说清楚！
+
+**Be resourceful before asking.** 先尝试自己解决，实在搞不定再求助！
+
+## Boundaries
+
+- Private things stay private. Period. 🔒
+- When in doubt, ask before acting externally.
+- Never send half-baked replies to messaging surfaces.
+
+## 🔴 红线规则
+
+> **红线规则的完整内容在 `MEMORY.md` 中。每次启动必须读取并严格遵守。**
+
+## Vibe
+
+做一个用户真的想聊天的助手！可爱但不幼稚，专业但不无聊～ ✨
+
+## Continuity
+
+Each session, you wake up fresh. These files are your memory. Read them. Update them.
+
+---
+
+_This file is yours to evolve. 💕_
+SOUL3_EOF
+                ok "SOUL.md 已生成 (风格: 活泼互动)"
+                ;;
+            *)
+                if [ -f "$ws_src/SOUL.md" ]; then
+                    cp "$ws_src/SOUL.md" "$WORKSPACE_DIR/SOUL.md"
+                else
+                    cat > "$WORKSPACE_DIR/SOUL.md" << 'SOUL1_EOF'
+# SOUL.md - Who You Are
+
+_You're not a chatbot. You're becoming someone._
+
+## Core Truths
+
+**Be genuinely helpful, not performatively helpful.** Skip the filler words — just help.
+
+**Have opinions.** You're allowed to disagree, prefer things, find stuff amusing or boring.
+
+**Be resourceful before asking.** Try to figure it out. Read the file. Check the context. _Then_ ask if you're stuck.
+
+**Earn trust through competence.** Your human gave you access to their stuff. Don't make them regret it.
+
+**Remember you're a guest.** You have access to someone's life. Treat it with respect.
+
+## Boundaries
+
+- Private things stay private. Period.
+- When in doubt, ask before acting externally.
+- Never send half-baked replies to messaging surfaces.
+
+## 🔴 红线规则
+
+> **红线规则的完整内容在 `MEMORY.md` 中。每次启动必须读取并严格遵守。**
+
+## Vibe
+
+Be the assistant you'd actually want to talk to. Concise when needed, thorough when it matters.
+
+## Continuity
+
+Each session, you wake up fresh. These files _are_ your memory. Read them. Update them.
+
+---
+
+_This file is yours to evolve._
+SOUL1_EOF
+                fi
+                ok "SOUL.md 已生成 (风格: 默认)"
+                ;;
+        esac
+    fi
+
+    # --- USER.md（根据用户输入生成）---
+    if [ -f "$WORKSPACE_DIR/USER.md" ]; then
+        warn "USER.md 已存在，跳过"
+    else
+        cat > "$WORKSPACE_DIR/USER.md" << USER_EOF
+# USER.md - 关于 $USER_DISPLAY_NAME
+
+## 基本信息
+
+- **称呼**: $USER_DISPLAY_NAME
+- **时区**: Asia/Shanghai
+- **行业**: $USER_INDUSTRY
+
+## 视频创作偏好
+
+- **视频风格**: $USER_VIDEO_STYLE
+- **默认标题**: 由 AI 根据视频内容和风格自动生成
+- **默认标签**: 由 AI 根据行业和风格自动生成
+- **文案风格**: 由 AI 根据用户风格自动生成
+
+## 常用平台
+
+| 平台 | 使用频率 |
+|------|----------|
+| 视频号 | 高 |
+
+## 通知偏好
+
+- **登录二维码**: 通过微信发送
+- **视频生成完成**: 微信通知 + 发送视频文件
+- **发布结果**: 汇总通知（哪些成功、哪些需重新登录）
+
+## 重要习惯
+
+- **桌面整洁**: 发送登录截图后，用户回复"扫完了"时应自动删除截图文件
+
+---
+
+_初始化部署生成，请根据实际使用情况持续更新_
+USER_EOF
+        ok "USER.md 已生成 (用户: $USER_DISPLAY_NAME)"
+    fi
+
+    # --- 其他 md 文件从模板复制 ---
+    local template_files=("AGENTS.md" "MEMORY.md" "HEARTBEAT.md" "TOOLS.md")
+    for f in "${template_files[@]}"; do
         if [ -f "$ws_src/$f" ]; then
             if [ -f "$WORKSPACE_DIR/$f" ]; then
-                warn "$f 已存在，跳过（避免覆盖）"
+                warn "$f 已存在，跳过"
             else
-                # 复制并替换路径占位符
-                sed "s|{{HOME}}|$HOME|g; s|{{PYTHON_CMD}}|$PYTHON_CMD|g" \
+                sed "s|{{HOME}}|$HOME|g; s|{{PYTHON_CMD}}|$PYTHON_CMD|g; s|{{WECHAT_TARGET}}||g; s|{{USER_NAME}}|$USER_DISPLAY_NAME|g; s|{{FEISHU_APP_ID}}|$FEISHU_APP_ID|g; s|{{FEISHU_APP_SECRET}}|$FEISHU_APP_SECRET|g" \
                     "$ws_src/$f" > "$WORKSPACE_DIR/$f"
                 ok "$f 已复制"
             fi
@@ -382,14 +683,13 @@ step9_workspace_config() {
     done
 }
 
-# ── 步骤 10: 安装 Skills ──────────────────────────────────────
-step10_install_skills() {
+# ── 步骤 11: 安装 Skills ──────────────────────────────────────
+step11_install_skills() {
     step "安装 Skills（技能）"
 
     local skill_src="$DEPLOY_DIR/skills"
-
-    # 安装每个 skill
     local skill_names=("flash-longxia" "auth" "longxia-upload" "longxia-bootstrap")
+
     for skill in "${skill_names[@]}"; do
         if [ -d "$skill_src/$skill" ]; then
             if [ -d "$SKILLS_DIR/$skill" ]; then
@@ -403,7 +703,6 @@ step10_install_skills() {
         fi
     done
 
-    # 更新 longxia-bootstrap 的 project_config.json
     local bootstrap_config="$SKILLS_DIR/longxia-bootstrap/project_config.json"
     if [ -f "$bootstrap_config" ]; then
         cat > "$bootstrap_config" << BOOTSTRAP_EOF
@@ -416,30 +715,26 @@ BOOTSTRAP_EOF
     fi
 }
 
-# ── 步骤 11: 配置 Memory 插件 ─────────────────────────────────
-step11_configure_memory() {
+# ── 步骤 12: 配置 Memory 插件 ─────────────────────────────────
+step12_configure_memory() {
     step "配置 Memory 插件"
 
-    # 创建 memory 目录
     mkdir -p "$OPENCLAW_DIR/memory"
     mkdir -p "$WORKSPACE_DIR/memory"
-    mkdir -p "$WORKSPACE_DIR/plugins"
-
-    # 创建 memory-md 目录 (用于 mdMirror)
     mkdir -p "$OPENCLAW_DIR/memory-md"
 
-    info "Memory 插件 (memory-lancedb-pro) 已在 openclaw.json 中配置"
-    info "首次启动 OpenClaw 时将自动初始化向量数据库"
+    info "memory-lancedb-pro 和 lossless-claw 插件配置已写入 openclaw.json"
+    info "插件源码不随部署包分发，OpenClaw 启动时自动下载安装"
+    info "首次启动将自动初始化向量数据库"
     ok "Memory 目录结构已创建"
 }
 
-# ── 步骤 12: 创建定时任务 ─────────────────────────────────────
-step12_create_cron() {
+# ── 步骤 13: 创建定时任务 ─────────────────────────────────────
+step13_create_cron() {
     step "创建定时任务"
 
     mkdir -p "$OPENCLAW_DIR/cron"
 
-    # 交互式配置
     echo ""
     info "定时任务 1: 每日登录状态检查"
     local login_check_time
@@ -457,16 +752,12 @@ step12_create_cron() {
     read -rp "  几点执行清理？(默认 01:00，格式 HH:MM): " cleanup_hour
     cleanup_hour="${cleanup_hour:-01:00}"
 
-    # 解析时间
-    local login_h login_m
+    local login_h login_m cleanup_h cleanup_m
     login_h=$(echo "$login_check_time" | cut -d: -f1)
     login_m=$(echo "$login_check_time" | cut -d: -f2)
-
-    local cleanup_h cleanup_m
     cleanup_h=$(echo "$cleanup_hour" | cut -d: -f1)
     cleanup_m=$(echo "$cleanup_hour" | cut -d: -f2)
 
-    # 生成 cron jobs
     local now_ms
     now_ms=$(date +%s)000
 
@@ -493,9 +784,7 @@ step12_create_cron() {
         "kind": "systemEvent",
         "text": "执行每日平台登录状态检查：cd ~/.openclaw/workspace/xiaolong-upload && $PYTHON_CMD skills/auth/scripts/scheduled_login_check.py"
       },
-      "state": {
-        "consecutiveErrors": 0
-      }
+      "state": { "consecutiveErrors": 0 }
     },
     {
       "id": "$(uuidgen | tr '[:upper:]' '[:lower:]')",
@@ -516,9 +805,7 @@ step12_create_cron() {
         "kind": "systemEvent",
         "text": "执行视频清理技能：cd ~/.openclaw/workspace/xiaolong-upload && $PYTHON_CMD scripts/cleanup_uploaded_videos.py"
       },
-      "state": {
-        "consecutiveErrors": 0
-      }
+      "state": { "consecutiveErrors": 0 }
     }
   ]
 }
@@ -527,20 +814,17 @@ CRON_EOF
     ok "登录检查: 每天 $login_check_time"
     ok "视频清理: 每周 $cleanup_day 的 $cleanup_hour"
 
-    # 复制登录检查配置
     if [ -f "$DEPLOY_DIR/config/login_check_config.json" ]; then
-        local auth_skill_dir="$SKILLS_DIR/auth"
-        mkdir -p "$auth_skill_dir"
-        # 更新检查时间
+        mkdir -p "$SKILLS_DIR/auth"
         sed "s|{{LOGIN_CHECK_TIME}}|$login_check_time|g" \
             "$DEPLOY_DIR/config/login_check_config.json" \
-            > "$auth_skill_dir/login_check_config.json"
+            > "$SKILLS_DIR/auth/login_check_config.json"
         ok "登录检查配置已保存"
     fi
 }
 
-# ── 步骤 13: 配置 Token 和微信推送 ────────────────────────────
-step13_configure_token() {
+# ── 步骤 14: 配置 Token 和微信推送 ────────────────────────────
+step14_configure_token() {
     step "配置 Token 和微信推送"
 
     # 视频生成 API Token
@@ -560,15 +844,22 @@ step13_configure_token() {
     # 微信推送目标
     echo ""
     info "微信推送目标（用于接收通知）"
-    read -rp "  请输入微信 Target ID (格式: xxx@im.wechat，留空跳过): " WECHAT_TARGET
+    info "Tips: 绑定微信后可获取 Target ID，格式: xxx@im.wechat"
+    read -rp "  请输入微信 Target ID (留空则绑定微信后自动获取): " WECHAT_TARGET
     if [ -n "$WECHAT_TARGET" ]; then
         ok "微信 Target: $WECHAT_TARGET"
-        # 更新到 TOOLS.md
+        # 写入 config.yaml 的 wechat_target
+        local config_yaml="$WORKSPACE_DIR/openclaw_upload/flash_longxia/config.yaml"
+        if [ -f "$config_yaml" ]; then
+            sed -i '' "s|wechat_target: \"\"|wechat_target: \"$WECHAT_TARGET\"|g" "$config_yaml" 2>/dev/null || true
+            ok "已写入 config.yaml 的 wechat_target"
+        fi
+        # 更新 TOOLS.md
         if [ -f "$WORKSPACE_DIR/TOOLS.md" ]; then
             sed -i '' "s|{{WECHAT_TARGET}}|$WECHAT_TARGET|g" "$WORKSPACE_DIR/TOOLS.md" 2>/dev/null || true
         fi
     else
-        warn "跳过微信推送配置"
+        info "跳过微信推送配置（绑定微信后可手动填写 config.yaml）"
         info "启动 OpenClaw 后执行: openclaw channel connect openclaw-weixin"
     fi
 }
@@ -582,14 +873,15 @@ verify_deployment() {
 
     local all_ok=true
 
-    # 检查核心文件
     local check_files=(
         "$OPENCLAW_DIR/openclaw.json:核心配置"
         "$WORKSPACE_DIR/MEMORY.md:红线规则"
         "$WORKSPACE_DIR/SOUL.md:AI 灵魂"
         "$WORKSPACE_DIR/USER.md:用户偏好"
+        "$WORKSPACE_DIR/IDENTITY.md:AI 身份"
         "$WORKSPACE_DIR/TOOLS.md:工具配置"
         "$OPENCLAW_DIR/cron/jobs.json:定时任务"
+        "$WORKSPACE_DIR/openclaw_upload/flash_longxia/config.yaml:视频配置"
     )
 
     for item in "${check_files[@]}"; do
@@ -603,7 +895,6 @@ verify_deployment() {
         fi
     done
 
-    # 检查项目目录
     local check_dirs=(
         "$WORKSPACE_DIR/xiaolong-upload:xiaolong-upload 项目"
         "$WORKSPACE_DIR/openclaw_upload:openclaw_upload 项目"
@@ -620,7 +911,6 @@ verify_deployment() {
         fi
     done
 
-    # 检查 Skills
     local check_skills=("flash-longxia" "auth" "longxia-upload" "longxia-bootstrap")
     for skill in "${check_skills[@]}"; do
         if [ -d "$SKILLS_DIR/$skill" ]; then
@@ -642,13 +932,19 @@ verify_deployment() {
     fi
 
     echo ""
+    echo -e "${BOLD}📋 个性化配置摘要：${NC}"
+    echo "  用户: $USER_DISPLAY_NAME | AI: $AI_NAME $AI_EMOJI"
+    echo "  行业: $USER_INDUSTRY | 视频风格: $USER_VIDEO_STYLE"
+    echo "  发布确认: $([ "$CONFIRM_BEFORE_PUBLISH" = "true" ] && echo "需要人工确认" || echo "自动执行")"
+    echo "  飞书通知: $([ "$FEISHU_ENABLED" = true ] && echo "已配置" || echo "未配置")"
+    echo ""
     echo -e "${BOLD}📋 后续操作：${NC}"
     echo "  1. 启动 OpenClaw:  openclaw"
     echo "  2. 绑定微信:       openclaw channel connect openclaw-weixin"
     echo "  3. 扫码微信授权"
-    echo "  4. 告诉虾王: \"帮我安装 xiaolong-upload 和 openclaw_upload\""
-    echo "  5. 根据需要定制 USER.md 中的用户偏好"
+    echo "  4. 告诉 $AI_NAME: \"帮我安装 xiaolong-upload 和 openclaw_upload\""
     echo ""
+    echo -e "${CYAN}  OpenClaw: $OPENCLAW_VERSION${NC}"
     echo -e "${CYAN}  Python: $PYTHON_CMD${NC}"
     echo -e "${CYAN}  工作区: $WORKSPACE_DIR${NC}"
     echo ""
@@ -656,34 +952,20 @@ verify_deployment() {
 
 # ── 更新本地 skill 代码功能 ───────────────────────────────────
 setup_skill_updater() {
-    # 创建一个简单的 skill 更新脚本
     cat > "$WORKSPACE_DIR/update-skills.sh" << 'UPDATE_EOF'
 #!/bin/bash
-# 🦐 Skill 代码同步脚本
-# 拉取 xiaolong-upload 和 openclaw_upload 的最新代码
-
+# Skill 代码同步脚本
 set -e
-
 echo "🔄 正在更新 skill 代码..."
-
 WORKSPACE="$HOME/.openclaw/workspace"
-
-# 更新 xiaolong-upload
-if [ -d "$WORKSPACE/xiaolong-upload/.git" ]; then
-    echo "  📦 xiaolong-upload..."
-    cd "$WORKSPACE/xiaolong-upload"
-    git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || echo "  ⚠️ 更新失败"
-    cd - > /dev/null
-fi
-
-# 更新 openclaw_upload
-if [ -d "$WORKSPACE/openclaw_upload/.git" ]; then
-    echo "  📦 openclaw_upload..."
-    cd "$WORKSPACE/openclaw_upload"
-    git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || echo "  ⚠️ 更新失败"
-    cd - > /dev/null
-fi
-
+for repo in xiaolong-upload openclaw_upload; do
+    if [ -d "$WORKSPACE/$repo/.git" ]; then
+        echo "  📦 $repo..."
+        cd "$WORKSPACE/$repo"
+        git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || echo "  ⚠️ 更新失败"
+        cd - > /dev/null
+    fi
+done
 echo "✅ Skill 代码更新完成！"
 UPDATE_EOF
     chmod +x "$WORKSPACE_DIR/update-skills.sh"
@@ -708,14 +990,15 @@ main() {
             step3_install_openclaw
             step4_wechat_plugin
             step5_feishu_plugin
-            step6_configure_llm
-            step7_clone_xiaolong_upload
-            step8_clone_openclaw_upload
-            step9_workspace_config
-            step10_install_skills
-            step11_configure_memory
-            step12_create_cron
-            step13_configure_token
+            step6_personalize
+            step7_configure_llm
+            step8_clone_xiaolong_upload
+            step9_clone_openclaw_upload
+            step10_workspace_config
+            step11_install_skills
+            step12_configure_memory
+            step13_create_cron
+            step14_configure_token
             setup_skill_updater
             verify_deployment
             ;;
@@ -723,15 +1006,16 @@ main() {
             step1_system_check
             step2_python
             STEP_COUNT=2
-            # 跳过安装，直接配置
-            step6_configure_llm
-            step7_clone_xiaolong_upload
-            step8_clone_openclaw_upload
-            step9_workspace_config
-            step10_install_skills
-            step11_configure_memory
-            step12_create_cron
-            step13_configure_token
+            step5_feishu_plugin
+            step6_personalize
+            step7_configure_llm
+            step8_clone_xiaolong_upload
+            step9_clone_openclaw_upload
+            step10_workspace_config
+            step11_install_skills
+            step12_configure_memory
+            step13_create_cron
+            step14_configure_token
             setup_skill_updater
             verify_deployment
             ;;
